@@ -1,2 +1,3 @@
-version 1.0
+version 1
+
 makes use of phantomjs. generates an html file.
