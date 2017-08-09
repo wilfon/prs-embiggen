@@ -1,0 +1,5 @@
+#ignore generated results files
+results-*.html
+
+assets/
+samples/
