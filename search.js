@@ -4,7 +4,7 @@
 
 var page = require('webpage').create(),
   system = require('system'),
-  t, gridview, terms,
+  t, gridview = true, terms,
   baseurl = 'https://www.pedalroom.com',
   searchurl = 'https://www.pedalroom.com/bikes/search?q=',
   gridsuffix = '&view=photogrid',
@@ -12,7 +12,7 @@ var page = require('webpage').create(),
 
 
 if (system.args.length === 1) {
-  console.log('Usage: search.js [--pg] <search term>');
+  console.log('Usage: search.js <search term>');
   phantom.exit();
 }
 
@@ -117,6 +117,8 @@ function search(terms, gridview) {
     searchurl = searchurl + gridsuffix;
   }
   console.log('Loading ' + searchstring);
+
+
   page.open(searchurl, function(status) {
     if (status !== 'success') {
       console.log('FAIL to load ' + searchurl);
@@ -131,6 +133,7 @@ function search(terms, gridview) {
       // }
 
       /** 2 **/
+      // TODO: hanlde no results
       var results = page.evaluate(getResults, gridview);
       // for (var i in results) {
       //   console.log('{ ' + results[i].t + ", " + results[i].l + ", " + results[i].i);
@@ -146,18 +149,33 @@ function search(terms, gridview) {
       // console.log('Content: ' + content);
 
       /** 5 **/
+      var numbikes = page.evaluate(function (){
+        return document.querySelector('#content h1').innerHTML;
+      });
+      // console.log(numbikes);
+      var numpages = page.evaluate(function(){
+        var pagelinks = document.querySelectorAll('.pagination a');
+        if (pagelinks && pagelinks.length > 1) {
+          var lastlink = pagelinks[pagelinks.length - 1].getAttribute('href');
+          console.log(lastlink);
+          return parseInt(lastlink.slice(lastlink.indexOf("page=")+5), 10);
+        }
+        return 1;
+      });
+      console.log("" + numpages + " pages");
+
+
       writeResultsPage(searchstring, results);
     }
-    phantom.exit();
 
+    phantom.exit();
   });
 }
 
 
 
 t = Date.now();
-gridview = system.args.length > 2 && system.args[1] == '--pg';
-terms = Array.prototype.slice.call(system.args, gridview ? 2 : 1);
+terms = Array.prototype.slice.call(system.args, 1);
 var results = search(terms, gridview);
 // for (var i in results) {
 //   console.log('{ ' + results[i].t + ", " + results[i].l + ", " + results[i].i);
