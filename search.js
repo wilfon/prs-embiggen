@@ -2,13 +2,16 @@
 
 // import System.IO;
 
-var page = require('webpage').create(),
+var webpage = require('webpage'),
   system = require('system'),
   t, gridview = true, terms,
   baseurl = 'https://www.pedalroom.com',
   searchurl = 'https://www.pedalroom.com/bikes/search?q=',
-  gridsuffix = '&view=photogrid',
-  resultsfile = '/pedalroom-search-results.html';
+  gridquery = '&view=photogrid',
+  pagequery = '&page=',
+  resultsfile = 'results/results-', // results/results-<terms>[-page].html
+  resultsurl = 'results-',
+  tp = 0, cp = 1;
 
 
 if (system.args.length === 1) {
@@ -17,7 +20,7 @@ if (system.args.length === 1) {
 }
 
 // reroute msgs to console 
-page.onConsoleMessage = function(msg) {
+function consoleToConsole(msg) {
   console.log(msg);
 }
 
@@ -92,9 +95,48 @@ function writeResultsList(title, results) {
   return html;
 }
 
-function writeResultsPage(title, results) {
+function writeNavigation(title, navigation) {
+  if (navigation.lastPage == 1) {
+    return "";
+  }
+
+  var html = "<ul class=\"pages\">";
+
+  if (navigation.currentPage > 1){
+    html += "<li class=\"first\"><a href=\"" + resultsurl + title + ".html\"><<</a>";
+    html += "<li class=\"prev\"><a href=\"" + resultsurl + title + '-' + (navigation.currentPage - 1) + ".html\" rel=\"prev\"><</a>";
+  }
+
+
+  var lo = Math.max(1, navigation.currentPage - 4);
+  var hi = Math.min(navigation.lastPage, navigation.currentPage + 4);
+  // console.log('lo:' + lo + ' cr: ' + navigation.currentPage + ' hi: ' + hi + ' ls: ' + navigation.lastPage);
+  for (var i = lo; i <= hi; ++i) {
+    if (navigation.currentPage == i) {
+      html += "<li class=\"current\">" + i + "</li>";
+    } else {
+      if (i == navigation.currentPage - 1) {
+        html += "<li class=\"prev\"><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\" rel=\"prev\">" + i + "</a>";
+      } else if (i == navigation.currentPage + 1) {
+        html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + i + ".html\" rel=\"next\">" + i + "</a>";
+      } else {
+        html += "<li><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\">" + i + "</a>";
+      }
+    }
+  }
+
+  
+  if (navigation.currentPage < navigation.lastPage) {
+    html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + (navigation.currentPage + 1) + ".html\" rel=\"next\">></a>";
+    html += "<li class=\"last\"><a href=\"" + resultsurl + title + '-' + navigation.lastPage + ".html\">>></a>";
+  }
+  html += "</ul>"
+  return html;
+}
+
+function writeResultsPage(title, results, navigation) {
   var fs = require("fs"),
-    outfile = "results/results-" + title + ".html",
+    outfile = resultsfile + title + (navigation.currentPage > 1 ? ('-' + navigation.currentPage) : "") + ".html",
     content;
 
   content = "<html><head>";
@@ -103,6 +145,7 @@ function writeResultsPage(title, results) {
   content += "<title>Search results: " + title + "</title></head><body>";
   content += "<div id=\"content\">"
   content += writeResultsList(title, results);
+  content += writeNavigation(title, navigation);
   content += "</div>"
   content += "</body></html>"
 
@@ -112,64 +155,82 @@ function writeResultsPage(title, results) {
 
 function search(terms, gridview) {
   var searchstring = terms.join('+')
-  searchurl = searchurl + searchstring;
-  if (gridview) {
-    searchurl = searchurl + gridsuffix;
-  }
-  console.log('Loading ' + searchstring);
+  // searchurl = searchurl + searchstring;
+  // if (gridview) {
+  //   searchurl = searchurl + gridquery;
+  // }
 
+  var openPage = function (pageurl) {
+    console.log('Loading ' + pageurl);
+    var page = webpage.create();
+    page.onConsoleMessage = consoleToConsole;
+    page.open(pageurl, function(status) {
+      if (status !== 'success') {
+        console.log('FAIL to load ' + pageurl);
+      } else {
+        t = Date.now() - t;
+        console.log('Loading time ' + t + ' msec');
 
-  page.open(searchurl, function(status) {
-    if (status !== 'success') {
-      console.log('FAIL to load ' + searchurl);
-    } else {
-      t = Date.now() - t;
-      console.log('Loading time ' + t + ' msec');
+        /** 1 **/
+        // var links = page.evaluate(getLinks);
+        // for (var i in links) {
+        //   console.log(links[i]);
+        // }
 
-      /** 1 **/
-      // var links = page.evaluate(getLinks);
-      // for (var i in links) {
-      //   console.log(links[i]);
-      // }
-
-      /** 2 **/
-      // TODO: hanlde no results
-      var results = page.evaluate(getResults, gridview);
-      // for (var i in results) {
-      //   console.log('{ ' + results[i].t + ", " + results[i].l + ", " + results[i].i);
-      // }
-
-      /** 3 **/
-      // writeResults(resultsfile, system.args[1], results);
-
-      /** 4 **/
-      // var resultsHtml = writeResultsList(system.args[1], results);
-      // page.setContent(resultsHtml, baseurl);
-      // var content = page.content;
-      // console.log('Content: ' + content);
-
-      /** 5 **/
-      var numbikes = page.evaluate(function (){
-        return document.querySelector('#content h1').innerHTML;
-      });
-      // console.log(numbikes);
-      var numpages = page.evaluate(function(){
-        var pagelinks = document.querySelectorAll('.pagination a');
-        if (pagelinks && pagelinks.length > 1) {
-          var lastlink = pagelinks[pagelinks.length - 1].getAttribute('href');
-          console.log(lastlink);
-          return parseInt(lastlink.slice(lastlink.indexOf("page=")+5), 10);
+        /** 2 **/
+        // TODO: hanlde no results
+        var results = page.evaluate(getResults, gridview);
+        if (!results.length) {
+          console.log('  ~~ no bikes found ~~');
+          phantom.exit();
         }
-        return 1;
-      });
-      console.log("" + numpages + " pages");
+        // for (var i in results) {
+        //   console.log('{ ' + results[i].t + ", " + results[i].l + ", " + results[i].i);
+        // }
 
+        /** 3 **/
+        // writeResults(resultsfile, system.args[1], results);
 
-      writeResultsPage(searchstring, results);
-    }
+        /** 4 **/
+        // var resultsHtml = writeResultsList(system.args[1], results);
+        // page.setContent(resultsHtml, baseurl);
+        // var content = page.content;
+        // console.log('Content: ' + content);
 
-    phantom.exit();
-  });
+        /** 5 **/
+
+        if (!tp) {
+          var numbikes = page.evaluate(function (){
+            return document.querySelector('#content h1').innerHTML;
+          });
+          console.log(numbikes);
+          tp = page.evaluate(function(){
+            var pagelinks = document.querySelectorAll('.pagination a');
+            if (pagelinks.length > 1) {
+              var lastlink = pagelinks[pagelinks.length - 1].getAttribute('href');
+              // console.log(lastlink);
+              return parseInt(lastlink.slice(lastlink.indexOf("page=")+5), 10);
+            }
+            return 1;
+          });
+          console.log("" + tp + " pages");
+        }
+
+        writeResultsPage(searchstring, results, {currentPage: cp, lastPage: tp});
+
+        page.close();
+        if (++cp <= tp)
+        {
+          openPage(searchurl + searchstring + pagequery + cp + gridquery);
+        } else {
+          // console.log('bye bye');
+          phantom.exit();
+        }
+      }
+
+    });
+  }
+  openPage(searchurl + searchstring + gridquery);
 }
 
 

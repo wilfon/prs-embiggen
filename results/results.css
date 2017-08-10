@@ -19,6 +19,7 @@
   font-size: 1em;
   overflow: hidden;
 }
+
 #content ul.results li a span {
   position: absolute;
   left: 0;
@@ -32,4 +33,15 @@
   height: 1em;
   background-color: rgba(0,0,0,0.5);
   padding: 0.5em 0.5em 0.5em 0.5em;
+}
+
+#content ul.pages li {
+    float: left;
+    color: #66c;
+    font-size: 16px;
+    margin: 8px;
+}
+
+#content ul.page li.current {
+    background-color: rgba(64, 128, 64, 0.8);
 }
