@@ -96,15 +96,18 @@ function writeResultsList(title, results) {
 }
 
 function writeNavigation(title, navigation) {
+  var html = "<ul class=\"pages\">";
+  html += "<li class=\"top\"><a href=\"results.html\">⋀</a></li>";
+
   if (navigation.lastPage == 1) {
-    return "";
+    html += "</ul>";
+    return html;
   }
 
-  var html = "<ul class=\"pages\">";
 
   if (navigation.currentPage > 1){
-    html += "<li class=\"first\"><a href=\"" + resultsurl + title + ".html\"><<</a>";
-    html += "<li class=\"prev\"><a href=\"" + resultsurl + title + '-' + (navigation.currentPage - 1) + ".html\" rel=\"prev\"><</a>";
+    html += "<li class=\"first\"><a href=\"" + resultsurl + title + ".html\"><<</a></li>";
+    html += "<li class=\"prev\"><a href=\"" + resultsurl + title + (navigation.currentPage - 1 == 1 ? "" : ('-' + (navigation.currentPage - 1))) + ".html\" rel=\"prev\"><</a></li>";
   }
 
 
@@ -116,19 +119,19 @@ function writeNavigation(title, navigation) {
       html += "<li class=\"current\">" + i + "</li>";
     } else {
       if (i == navigation.currentPage - 1) {
-        html += "<li class=\"prev\"><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\" rel=\"prev\">" + i + "</a>";
+        html += "<li class=\"prev\"><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\" rel=\"prev\">" + i + "</a></li>";
       } else if (i == navigation.currentPage + 1) {
-        html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + i + ".html\" rel=\"next\">" + i + "</a>";
+        html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + i + ".html\" rel=\"next\">" + i + "</a></li>";
       } else {
-        html += "<li><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\">" + i + "</a>";
+        html += "<li><a href=\"" + resultsurl + title + (i == 1 ? "" : ('-' + i)) + ".html\">" + i + "</a></li>";
       }
     }
   }
 
   
   if (navigation.currentPage < navigation.lastPage) {
-    html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + (navigation.currentPage + 1) + ".html\" rel=\"next\">></a>";
-    html += "<li class=\"last\"><a href=\"" + resultsurl + title + '-' + navigation.lastPage + ".html\">>></a>";
+    html += "<li class=\"next\"><a href=\"" + resultsurl + title + '-' + (navigation.currentPage + 1) + ".html\" rel=\"next\">></a></li>";
+    html += "<li class=\"last\"><a href=\"" + resultsurl + title + '-' + navigation.lastPage + ".html\">>></a></li>";
   }
   html += "</ul>"
   return html;
@@ -152,24 +155,34 @@ function writeResultsPage(title, results, navigation) {
   fs.write(outfile, content, 'w');
 }
 
+function updateHistory(title, url) {
+  var historypage = require("fs").open('results/results.html', 'rw');
+  while (!historypage.atEnd()) {
+    var line = historypage.readLine();
+    if (line.indexOf('class=\"searches\"')) {
+      // console.log("logging: " + url);
+      historypage.writeLine("<li><span class=\"search-term\"><a href=\"" + url + "\">" + title + "</a></span><span class=\"search-date\">" + Date() + "</span></li>");
+      break;
+    }
+  }
+  historypage.flush();
+  historypage.close();
+}
+
 
 function search(terms, gridview) {
-  var searchstring = terms.join('+')
-  // searchurl = searchurl + searchstring;
-  // if (gridview) {
-  //   searchurl = searchurl + gridquery;
-  // }
+  var searchstring = terms.join('+');
 
   var openPage = function (pageurl) {
-    console.log('Loading ' + pageurl);
     var page = webpage.create();
     page.onConsoleMessage = consoleToConsole;
+    console.log('Loading ' + pageurl);
+    t = Date.now();
     page.open(pageurl, function(status) {
       if (status !== 'success') {
         console.log('FAIL to load ' + pageurl);
       } else {
-        t = Date.now() - t;
-        console.log('Loading time ' + t + ' msec');
+        console.log('Loading time ' + (Date.now() - t) + ' msec');
 
         /** 1 **/
         // var links = page.evaluate(getLinks);
@@ -214,6 +227,7 @@ function search(terms, gridview) {
             return 1;
           });
           console.log("" + tp + " pages");
+          updateHistory(searchstring, resultsurl + searchstring + ".html");
         }
 
         writeResultsPage(searchstring, results, {currentPage: cp, lastPage: tp});
@@ -235,7 +249,6 @@ function search(terms, gridview) {
 
 
 
-t = Date.now();
 terms = Array.prototype.slice.call(system.args, 1);
 var results = search(terms, gridview);
 // for (var i in results) {

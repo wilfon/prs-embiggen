@@ -35,13 +35,36 @@
   padding: 0.5em 0.5em 0.5em 0.5em;
 }
 
+#content ul.pages {
+  list-style: none;
+  position: fixed;
+  right: 4px;
+  top: 36px;
+}
 #content ul.pages li {
-    float: left;
-    color: #66c;
-    font-size: 16px;
-    margin: 8px;
+  float: left;
+  font-size: 16px;
+  color: rgb(64, 188, 92);
+  margin: 2px;
+  padding: 0.2em 0.5em;
+  outline-color: rgb(64, 188, 92);
+  outline-style: solid;
+  outline-width: 1px;
+  text-decoration: none;
+}
+#content ul.pages li.current {
+  color: #eee;
+  background-color: rgb(60, 166, 86);
 }
 
-#content ul.page li.current {
-    background-color: rgba(64, 128, 64, 0.8);
+#content ul.searches li {
+  text-align: left;
+}
+#content ul.searches li span.search-term {
+  font-size: 16px;
+  padding: 10px 10px 2px 2px;
+}
+#content ul.searches li span.search-date {
+  text-align: right;
+  font-size: 12px;
 }
