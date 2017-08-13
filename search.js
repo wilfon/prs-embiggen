@@ -155,13 +155,15 @@ function writeResultsPage(title, results, navigation) {
   fs.write(outfile, content, 'w');
 }
 
-function updateHistory(title, url) {
+function updateHistory(info, url) {
   var historypage = require("fs").open('results/results.html', 'rw');
   while (!historypage.atEnd()) {
     var line = historypage.readLine();
     if (line.indexOf('class=\"searches\"')) {
       // console.log("logging: " + url);
-      historypage.writeLine("<li><span class=\"search-term\"><a href=\"" + url + "\">" + title + "</a></span><span class=\"search-date\">" + Date() + "</span></li>");
+      historypage.writeLine("<li><span class=\"search-term\"><a href=\"" + url + "\">" + info.t + "</a></span>" +
+        "<span class=\"search-info\">[" + info.b + " bikes | " + info.p + " pages]</span>" +
+        "<span class=\"search-date\">" + Date() + "</span></li>");
       break;
     }
   }
@@ -214,7 +216,11 @@ function search(terms, gridview) {
 
         if (!tp) {
           var numbikes = page.evaluate(function (){
-            return document.querySelector('#content h1').innerHTML;
+            var b = parseInt(document.querySelector('#content h1').innerHTML, 10);
+            if (!isNaN(b)) {
+              return b;
+            }
+            return parseInt(document.querySelector('#content h1').innerHTML.substring(5), 10)
           });
           console.log(numbikes);
           tp = page.evaluate(function(){
@@ -227,7 +233,7 @@ function search(terms, gridview) {
             return 1;
           });
           console.log("" + tp + " pages");
-          updateHistory(searchstring, resultsurl + searchstring + ".html");
+          updateHistory({t: searchstring, b: numbikes, p: tp}, resultsurl + searchstring + ".html");
         }
 
         writeResultsPage(searchstring, results, {currentPage: cp, lastPage: tp});
